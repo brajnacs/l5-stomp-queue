@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace Mayconbordin\L5StompQueue\Connectors;
 
@@ -25,11 +25,12 @@ class StompConnector implements ConnectorInterface
     public function connect(array $config)
     {
         $stomp = new StatefulStomp(new Client($config['broker_url']));
+        $jobClass = Arr::get($config, 'job_class', null);
         //$stomp->sync         = Arr::get($config, 'sync', false);
         //$stomp->prefetchSize = Arr::get($config, 'prefetchSize', 1);
         //$stomp->clientId     = Arr::get($config, 'clientId', null);
 
-        return new StompQueue($stomp, $config['queue'], Arr::get($config, 'system', null), [
+        return new StompQueue($stomp, $config['queue'], $jobClass, Arr::get($config, 'system', null), [
             'username' => Arr::get($config, 'username', ''),
             'password' => Arr::get($config, 'password', '')
         ]);

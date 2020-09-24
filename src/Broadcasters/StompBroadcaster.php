@@ -1,10 +1,10 @@
-<?php 
+<?php
 
 namespace Mayconbordin\L5StompQueue\Broadcasters;
 
-use Stomp\StatefulStomp as Stomp;
 use Illuminate\Contracts\Broadcasting\Broadcaster;
-use Illuminate\Support\Arr;
+use Stomp\StatefulStomp as Stomp;
+use Stomp\Transport\Message;
 
 class StompBroadcaster implements Broadcaster
 {
@@ -37,31 +37,40 @@ class StompBroadcaster implements Broadcaster
     /**
      * Broadcast the given event.
      *
-     * @param  array $channels
-     * @param  string $event
-     * @param  array $payload
+     * @param array $channels
+     * @param string $event
+     * @param array $payload
      * @return void
      */
     public function broadcast(array $channels, $event, array $payload = [])
     {
         $this->connect();
 
-        $payload = json_encode(['event' => $event, 'data' => $payload]);
+        $payload = json_encode($payload);
 
         foreach ($channels as $channel) {
-            $this->stomp->send($channel, $payload);
+            var_dump($channel, $payload);
+            $this->stomp->send($channel, new Message($payload));
         }
     }
 
     /**
      * Connect to Stomp server, if not connected.
-     *
-     * @throws \FuseSource\Stomp\Exception\StompException
      */
     protected function connect()
     {
-        if (!$this->stomp->isConnected()) {
-            $this->stomp->connect(Arr::get($this->credentials, 'username', ''), Arr::get($this->credentials, 'password', ''));
+        if (!$this->stomp->getClient()->isConnected()) {
+            $this->stomp->getClient()->connect();
         }
+    }
+
+    public function auth($request)
+    {
+        return true;
+    }
+
+    public function validAuthenticationResponse($request, $result)
+    {
+        return true;
     }
 }

@@ -2,8 +2,9 @@
 
 use Mayconbordin\L5StompQueue\StompQueue;
 use Mockery as m;
+use PHPUnit\Framework\TestCase;
 
-class StompQueueTest extends PHPUnit_Framework_TestCase
+class StompQueueTest extends TestCase
 {
     /**
      * @var Mockery\MockInterface
@@ -15,7 +16,7 @@ class StompQueueTest extends PHPUnit_Framework_TestCase
      */
     protected $queue;
 
-    protected function setUp()
+    protected function setUp(): void
     {
         $this->stomp = m::mock('Stomp\StatefulStomp');
         $this->stomp->shouldReceive('disconnect');
@@ -26,7 +27,7 @@ class StompQueueTest extends PHPUnit_Framework_TestCase
         $this->queue->setContainer($container);
     }
 
-    protected function tearDown()
+    protected function tearDown(): void
     {
         parent::tearDown();
         m::close();
@@ -45,19 +46,6 @@ class StompQueueTest extends PHPUnit_Framework_TestCase
         $this->queue->push($job, $data);
     }
 
-    public function testPushRaw()
-    {
-        $data  = 'data';
-        $queue = 'test';
-        $headers = ['delay' => 10];
-
-        $this->stomp->shouldReceive('send')->once()->with($queue, $data, []);
-        $this->queue->pushRaw($data, $queue);
-
-        $this->stomp->shouldReceive('send')->once()->with($queue, $data, $headers);
-        $this->queue->pushRaw($data, $queue, $headers);
-    }
-
     public function testRecreate()
     {
         $data  = 'data';
@@ -65,18 +53,6 @@ class StompQueueTest extends PHPUnit_Framework_TestCase
 
         $this->stomp->shouldReceive('send')->once()->with($queue, $data, []);
         $this->queue->recreate($data, $queue, 0);
-    }
-
-    public function testLater()
-    {
-        $job   = 'job';
-        $data  = 'data';
-        $queue = 'test';
-
-        $expected = json_encode(['job' => $job, 'data' => $data]);
-
-        $this->stomp->shouldReceive('send')->once()->with($queue, $expected, []);
-        $this->queue->later(10, $job, $data, $queue);
     }
 
     public function testPop()

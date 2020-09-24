@@ -1,6 +1,8 @@
 <?php
 
-class ConnectionTest extends PHPUnit_Framework_TestCase {
+use PHPUnit\Framework\TestCase;
+
+class ConnectionTest extends TestCase {
 
     public function testConnect()
     {

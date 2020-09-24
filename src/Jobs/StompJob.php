@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace Mayconbordin\L5StompQueue\Jobs;
 
@@ -36,12 +36,16 @@ class StompJob extends Job implements JobContract
      * @param Container $container
      * @param StompQueue $stomp
      * @param Frame $job
+     * @param string $jobClass
      */
-    public function __construct(Container $container, StompQueue $stomp, Frame $job)
+    public function __construct(Container $container, StompQueue $stomp, Frame $job, string $connectionName, string $queue, $jobClass)
     {
         $this->job = $job;
         $this->stomp = $stomp;
         $this->container = $container;
+        $this->queue = $queue;
+        $this->connectionName = $connectionName;
+        $this->jobClass = $jobClass;
     }
 
     /**
@@ -51,7 +55,15 @@ class StompJob extends Job implements JobContract
      */
     public function fire()
     {
-        $this->resolveAndFire(json_decode($this->getRawBody(), true));
+        $destination = $this->job->getHeaders()['destination'];
+        $body = json_decode($this->getRawBody(), true);
+
+        $jobInstance = new $this->jobClass(
+            $destination,
+            $body
+        );
+
+        $jobInstance->handle();
     }
 
     /**
@@ -119,7 +131,7 @@ class StompJob extends Job implements JobContract
      */
     public function getQueue()
     {
-        return Arr::get(json_decode($this->job->body, true), 'queue');
+        return $this->queue;
     }
 
     /**
@@ -130,5 +142,25 @@ class StompJob extends Job implements JobContract
     public function getRawBody()
     {
         return $this->job->body;
+    }
+
+    public function getJobId()
+    {
+        return $this->job->getHeaders()['message-id'];
+    }
+
+    /**
+     * Process an exception that caused the job to fail.
+     *
+     * @param  \Throwable|null  $e
+     * @return void
+     */
+    protected function failed($e)
+    {
+        $payload = $this->getRawBody();
+
+        if (method_exists($this->instance = $this->jobClass, 'failed')) {
+            $this->instance->failed($payload, $e);
+        }
     }
 }

@@ -1,9 +1,7 @@
 l5-stomp-queue
 ==============
 
-[![Latest Stable Version](https://poser.pugx.org/mayconbordin/l5-stomp-queue/v/stable)](https://packagist.org/packages/mayconbordin/l5-stomp-queue) [![Total Downloads](https://poser.pugx.org/mayconbordin/l5-stomp-queue/downloads)](https://packagist.org/packages/mayconbordin/l5-stomp-queue) [![Latest Unstable Version](https://poser.pugx.org/mayconbordin/l5-stomp-queue/v/unstable)](https://packagist.org/packages/mayconbordin/l5-stomp-queue) [![License](https://poser.pugx.org/mayconbordin/l5-stomp-queue/license)](https://packagist.org/packages/mayconbordin/l5-stomp-queue)
-
-STOMP Queue and Broadcaster Driver for Laravel 5.
+STOMP Queue and Broadcaster Driver for Laravel 5 and above.
 
 ## Installation
 
@@ -32,6 +30,7 @@ And add the driver configuration to the `connections` array in `config/queue.php
         'driver'     => 'stomp',
         'broker_url' => 'tcp://localhost:61613',
         'queue'      => 'default',
+        'job_class'  =>  App\Jobs\MyQueueHandlerJob::class,
         'system'     => 'activemq'
     ]
 )
