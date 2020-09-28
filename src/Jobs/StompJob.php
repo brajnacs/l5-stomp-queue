@@ -31,21 +31,29 @@ class StompJob extends Job implements JobContract
     protected $job;
 
     /**
+     * Application specific config
+     * @var array
+     */
+    protected $stompConfig;
+
+    /**
      * Create a new job instance.
      *
      * @param Container $container
      * @param StompQueue $stomp
      * @param Frame $job
-     * @param string $jobClass
+     * @param string $connectionName
+     * @param string $queue
+     * @param array $stompConfig
      */
-    public function __construct(Container $container, StompQueue $stomp, Frame $job, string $connectionName, string $queue, $jobClass)
+    public function __construct(Container $container, StompQueue $stomp, Frame $job, string $connectionName, string $queue, array $stompConfig)
     {
-        $this->job = $job;
-        $this->stomp = $stomp;
         $this->container = $container;
-        $this->queue = $queue;
+        $this->stomp = $stomp;
+        $this->job = $job;
         $this->connectionName = $connectionName;
-        $this->jobClass = $jobClass;
+        $this->queue = $queue;
+        $this->stompConfig = $stompConfig;
     }
 
     /**
@@ -56,14 +64,28 @@ class StompJob extends Job implements JobContract
     public function fire()
     {
         $destination = $this->job->getHeaders()['destination'];
+
+        $jobClass = $this->resolveJob($this->stompConfig, $destination);
         $body = json_decode($this->getRawBody(), true);
 
-        $jobInstance = new $this->jobClass(
+        $jobInstance = new $jobClass(
             $destination,
             $body
         );
 
         $jobInstance->handle();
+        $this->stomp->getStomp()->ack($this->job);
+    }
+
+    public function resolveJob($config, $destination)
+    {
+        $queues = Arr::get($config, 'queues', []);
+        return $queues[$destination] ?? $this->getDefaultJob($config);
+    }
+
+    private function getDefaultJob($config)
+    {
+        return $config['default-job'] ?? DefaultJob::class;
     }
 
     /**
@@ -157,9 +179,13 @@ class StompJob extends Job implements JobContract
      */
     protected function failed($e)
     {
+        $this->stomp->getStomp()->nack($this->job);
         $payload = $this->getRawBody();
 
-        if (method_exists($this->instance = $this->jobClass, 'failed')) {
+        $destination = $this->job->getHeaders()['destination'];
+        $jobClass = $this->resolveJob($this->stompConfig, $destination);
+
+        if (method_exists($this->instance = $jobClass, 'failed')) {
             $this->instance->failed($payload, $e);
         }
     }

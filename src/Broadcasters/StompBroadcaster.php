@@ -49,8 +49,7 @@ class StompBroadcaster implements Broadcaster
         $payload = json_encode($payload);
 
         foreach ($channels as $channel) {
-            var_dump($channel, $payload);
-            $this->stomp->send($channel, new Message($payload));
+            $this->stomp->send($channel, new Message($payload, ['persistent' => "true"]));
         }
     }
 

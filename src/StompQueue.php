@@ -39,34 +39,14 @@ class StompQueue extends Queue implements QueueContract
      */
     protected $system;
 
-    /**
-     * The Stomp credentials for connection.
-     *
-     * @var array
-     */
-    protected $credentials;
+    protected  $credentials;
+    private $stompConfig;
 
-    /**
-     * The Job Handler to execute
-     *
-     * @var string
-     */
-    protected $jobClass;
-
-    /**
-     * Create a new ActiveMQ queue instance.
-     *
-     * @param Stomp $stomp
-     * @param string $default
-     * @param string $jobClass
-     * @param string|null $system
-     * @param array $credentials [username=string, password=string]
-     */
-    public function __construct(Stomp $stomp, $default,  string $jobClass,  $system = null, array $credentials = [])
+    public function __construct(Stomp $stomp, $default, array $stompConfig, $system = null, array $credentials = [])
     {
         $this->stomp = $stomp;
         $this->default = $default;
-        $this->jobClass = $jobClass;
+        $this->stompConfig = $stompConfig;
         $this->system = $system;
         $this->credentials = $credentials;
     }
@@ -119,25 +99,35 @@ class StompQueue extends Queue implements QueueContract
      */
     public function pop($queue = null)
     {
-        if (!$this->isAlreadySubscribed($queue)) {
-            $this->getStomp()->subscribe($this->getQueue($queue));
+        $allQueues = explode(';', $this->getQueue());
+
+        foreach ($allQueues as $queueItem) {
+            if (!$this->isAlreadySubscribed($queueItem)) {
+                $this->getStomp()->subscribe($this->getQueue($queueItem), null, "client");
+            }
         }
+
         $job = $this->getStomp()->read();
         if (!is_null($job) && ($job instanceof Frame)) {
-            return new StompJob($this->container, $this, $job, $this->connectionName, $queue, $this->jobClass);
+            return new StompJob($this->container, $this, $job, $this->connectionName, $queue, $this->stompConfig);
         }
     }
 
     /**
      * Determines if a queue is subscribed
-     * todo: check exact queue name
      * @param $queue
      * @return bool
      */
     public function isAlreadySubscribed($queue): bool
     {
         $subscriptions = $this->getStomp()->getSubscriptions();
-        return $subscriptions->count() > 0;
+
+        foreach ($subscriptions as $subscription) {
+            if ($subscription->getDestination() === $queue) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -149,7 +139,7 @@ class StompQueue extends Queue implements QueueContract
      */
     public function deleteMessage($queue, Frame $message)
     {
-        $this->getStomp()->ack($message);
+//        $this->getStomp()->ack($message);
     }
 
     /**
@@ -158,7 +148,7 @@ class StompQueue extends Queue implements QueueContract
      * @param string|null $queue
      * @return string
      */
-    public function getQueue($queue)
+    public function getQueue($queue = null)
     {
         return $queue ?: $this->default;
     }

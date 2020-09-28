@@ -1,7 +1,14 @@
 {
     "name": "mayconbordin/l5-stomp-queue",
-    "description": "Stomp Queue Driver for Laravel 5",
-    "keywords": ["laravel", "queue", "stomp", "laravel 5"],
+    "description": "Stomp Queue Driver for Laravel 5 or above",
+    "keywords": [
+        "laravel",
+        "queue",
+        "stomp",
+        "laravel 5",
+        "laravel 6",
+        "laravel 7"
+    ],
     "license": "MIT",
     "authors": [
         {
@@ -20,11 +27,12 @@
         "illuminate/queue": ">=5.6",
         "illuminate/broadcasting": ">=5.6",
         "symfony/process": ">=2.8",
-        "stomp-php/stomp-php" : "4.*"
+        "stomp-php/stomp-php": "4.*",
+        "ext-json": "*"
     },
     "require-dev": {
-      "phpunit/phpunit": ">=4.0",
-      "mockery/mockery": "^1.4"
+        "phpunit/phpunit": ">=4.0",
+        "mockery/mockery": "^1.4"
     },
     "autoload": {
         "psr-4": {
