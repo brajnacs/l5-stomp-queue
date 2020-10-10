@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace Mayconbordin\L5StompQueue;
 
@@ -66,12 +66,12 @@ class StompServiceProvider extends ServiceProvider
     protected function registerStompBroadcaster($manager)
     {
         $manager->extend('stomp', function ($app, $config) {
-            $stomp = new Stomp(new Client($config['broker_url']));
-            //$stomp->sync         = Arr::get($config, 'sync', false);
-            //$stomp->prefetchSize = Arr::get($config, 'prefetchSize', 1);
-            //$stomp->clientId     = Arr::get($config, 'clientId', null);
-
-            return new StompBroadcaster($stomp);
+            $stompClient = new Client($config['broker_url']);
+            $username = Arr::get($config, 'username', null);
+            $password = Arr::get($config, 'password', null);
+            $stompClient->setLogin($username, $password);
+            $stomp = new Stomp($stompClient);
+            return new StompBroadcaster($stomp, compact('username', 'password'));
         });
     }
 

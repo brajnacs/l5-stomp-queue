@@ -24,7 +24,11 @@ class StompConnector implements ConnectorInterface
      */
     public function connect(array $config)
     {
-        $stomp = new StatefulStomp(new Client($config['broker_url']));
+        $stompClient = new Client($config['broker_url']);
+        $username = Arr::get($config, 'username', null);
+        $password = Arr::get($config, 'password', null);
+        $stompClient->setLogin($username, $password);
+        $stomp = new StatefulStomp($stompClient);
         //$stomp->sync         = Arr::get($config, 'sync', false);
         //$stomp->prefetchSize = Arr::get($config, 'prefetchSize', 1);
         //$stomp->clientId     = Arr::get($config, 'clientId', null);
@@ -34,10 +38,7 @@ class StompConnector implements ConnectorInterface
             $config['queue'],
             $config['stomp-config'],
             Arr::get($config, 'system', null),
-            [
-                'username' => Arr::get($config, 'username', ''),
-                'password' => Arr::get($config, 'password', '')
-            ]
+            compact('username', 'password'),
         );
     }
 }
