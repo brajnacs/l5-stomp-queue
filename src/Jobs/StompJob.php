@@ -2,12 +2,14 @@
 
 namespace Mayconbordin\L5StompQueue\Jobs;
 
-use Stomp\Transport\Frame;
-use Mayconbordin\L5StompQueue\StompQueue;
-use Illuminate\Support\Arr;
 use Illuminate\Container\Container;
-use Illuminate\Queue\Jobs\Job;
 use Illuminate\Contracts\Queue\Job as JobContract;
+use Illuminate\Queue\Jobs\Job;
+use Illuminate\Queue\Jobs\JobName;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Log;
+use Mayconbordin\L5StompQueue\StompQueue;
+use Stomp\Transport\Frame;
 
 /**
  * Class StompJob
@@ -63,18 +65,38 @@ class StompJob extends Job implements JobContract
      */
     public function fire()
     {
-        $destination = $this->job->getHeaders()['destination'];
+        $payload = $this->payload();
 
-        $jobClass = $this->resolveJob($this->stompConfig, $destination);
-        $body = json_decode($this->getRawBody(), true);
+        if ($this->isLaravelJob($payload)) {
+            [$class, $method] = JobName::parse($payload['job']);
+            ($this->instance = $this->resolve($class))->{$method}($this, $payload['data']);
+        }
+        else {
+            $destination = $this->job->getHeaders()['destination'];
+            $jobClass = $this->resolveJob($this->stompConfig, $destination);
+            $body = json_decode($this->getRawBody(), true);
 
-        $jobInstance = new $jobClass(
-            $destination,
-            $body
-        );
+            $jobInstance = new $jobClass(
+                $destination,
+                $body
+            );
 
-        $jobInstance->handle();
+            $jobInstance->handle();
+        }
+
         $this->stomp->getStomp()->ack($this->job);
+    }
+
+    public function isLaravelJob($payload)
+    {
+        try {
+            [$class, $method] = JobName::parse($payload['job']);
+            return class_exists($class);
+        } catch (\Exception $e) {
+            // do nothing
+        }
+
+        return false;
     }
 
     public function resolveJob($config, $destination)

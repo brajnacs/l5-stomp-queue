@@ -39,7 +39,7 @@ class StompQueue extends Queue implements QueueContract
      */
     protected $system;
 
-    protected  $credentials;
+    protected $credentials;
     private $stompConfig;
 
     public function __construct(Stomp $stomp, $default, array $stompConfig, $system = null, array $credentials = [])
@@ -61,7 +61,7 @@ class StompQueue extends Queue implements QueueContract
      */
     public function push($job, $data = '', $queue = null)
     {
-        return $this->pushRaw($this->createPayload($job, $data), $queue);
+        return $this->pushRaw($this->createPayload($job, $data), $this->getQueue($queue));
     }
 
     /**
@@ -99,8 +99,9 @@ class StompQueue extends Queue implements QueueContract
      */
     public function pop($queue = null)
     {
-        $allQueues = explode(';', $this->getQueue());
+        $allQueues = array_keys($this->stompConfig['queues'] ?? []);
 
+        $allQueues[] = $this->getQueue();
         foreach ($allQueues as $queueItem) {
             if (!$this->isAlreadySubscribed($queueItem)) {
                 $this->getStomp()->subscribe($this->getQueue($queueItem), null, "client");
