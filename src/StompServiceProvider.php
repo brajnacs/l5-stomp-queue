@@ -3,6 +3,8 @@
 namespace Mayconbordin\L5StompQueue;
 
 use Stomp\Client;
+use Stomp\Network\Observer\ServerAliveObserver;
+use Stomp\StatefulStomp;
 use Stomp\StatefulStomp as Stomp;
 use Illuminate\Support\Arr;
 use Illuminate\Support\ServiceProvider;
@@ -70,6 +72,11 @@ class StompServiceProvider extends ServiceProvider
             $username = Arr::get($config, 'username', null);
             $password = Arr::get($config, 'password', null);
             $stompClient->setLogin($username, $password);
+
+            $stompClient->setHeartbeat(0, 1000);
+            $observer = new ServerAliveObserver();
+            $stompClient->getConnection()->getObservers()->addObserver($observer);
+
             $stomp = new Stomp($stompClient);
             return new StompBroadcaster($stomp, compact('username', 'password'));
         });
