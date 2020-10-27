@@ -7,6 +7,7 @@ use Illuminate\Queue\Queue;
 use Illuminate\Support\Facades\Log;
 use Mayconbordin\L5StompQueue\Jobs\StompJob;
 use Stomp\Exception\ConnectionException;
+use Stomp\Network\Observer\Exception\HeartbeatException;
 use Stomp\StatefulStomp as Stomp;
 use Stomp\Transport\Frame;
 use Stomp\Transport\Message;
@@ -111,13 +112,20 @@ class StompQueue extends Queue implements QueueContract
         }
 
         $job = null;
+
         try {
             $job = $this->getStomp()->read();
         } catch (ConnectionException $connectionException) {
             Log::info("Connection broken: " . $connectionException->getMessage());
             Log::info("exiting");
             exit(1);
+
+        } catch (HeartbeatException $heartbeatException) {
+            Log::info("Heartbeat exception: " . $heartbeatException->getMessage());
+            Log::info("exiting");
+            exit(1);
         }
+
         if (!is_null($job) && ($job instanceof Frame)) {
             return new StompJob($this->container, $this, $job, $this->connectionName, $queue, $this->stompConfig);
         }
