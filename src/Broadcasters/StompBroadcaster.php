@@ -51,6 +51,8 @@ class StompBroadcaster implements Broadcaster
         foreach ($channels as $channel) {
             $this->stomp->send($channel, new Message($payload, ['persistent' => "true"]));
         }
+
+        $this->disconnect();
     }
 
     /**
@@ -58,9 +60,12 @@ class StompBroadcaster implements Broadcaster
      */
     protected function connect()
     {
-        if (!$this->stomp->getClient()->isConnected()) {
-            $this->stomp->getClient()->connect();
-        }
+        $this->stomp->getClient()->connect();
+    }
+
+    protected function disconnect()
+    {
+        $this->stomp->getClient()->disconnect();
     }
 
     public function auth($request)
