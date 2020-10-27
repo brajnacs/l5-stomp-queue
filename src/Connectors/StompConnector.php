@@ -6,6 +6,7 @@ use Illuminate\Queue\Connectors\ConnectorInterface;
 use Illuminate\Support\Arr;
 use Mayconbordin\L5StompQueue\StompQueue;
 use Stomp\Client;
+use Stomp\Network\Observer\ServerAliveObserver;
 use Stomp\StatefulStomp;
 
 /**
@@ -28,7 +29,11 @@ class StompConnector implements ConnectorInterface
         $username = Arr::get($config, 'username', null);
         $password = Arr::get($config, 'password', null);
         $stompClient->setLogin($username, $password);
+        $stompClient->setHeartbeat(0, 1000);
+        $observer = new ServerAliveObserver();
+        $stompClient->getConnection()->getObservers()->addObserver($observer);
         $stomp = new StatefulStomp($stompClient);
+
         //$stomp->sync         = Arr::get($config, 'sync', false);
         //$stomp->prefetchSize = Arr::get($config, 'prefetchSize', 1);
         //$stomp->clientId     = Arr::get($config, 'clientId', null);
