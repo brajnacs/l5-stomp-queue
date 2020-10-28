@@ -68,17 +68,7 @@ class StompServiceProvider extends ServiceProvider
     protected function registerStompBroadcaster($manager)
     {
         $manager->extend('stomp', function ($app, $config) {
-            $stompClient = new Client($config['broker_url']);
-            $username = Arr::get($config, 'username', null);
-            $password = Arr::get($config, 'password', null);
-            $stompClient->setLogin($username, $password);
-
-            $stompClient->setHeartbeat(0, 1000);
-            $observer = new ServerAliveObserver();
-            $stompClient->getConnection()->getObservers()->addObserver($observer);
-
-            $stomp = new Stomp($stompClient);
-            return new StompBroadcaster($stomp, compact('username', 'password'));
+            return new StompBroadcaster($config);
         });
     }
 

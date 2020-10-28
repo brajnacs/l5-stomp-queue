@@ -3,6 +3,11 @@
 namespace Mayconbordin\L5StompQueue\Broadcasters;
 
 use Illuminate\Contracts\Broadcasting\Broadcaster;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Log;
+use Stomp\Client;
+use Stomp\Network\Observer\Exception\HeartbeatException;
+use Stomp\Network\Observer\ServerAliveObserver;
 use Stomp\StatefulStomp as Stomp;
 use Stomp\Transport\Message;
 
@@ -16,22 +21,35 @@ class StompBroadcaster implements Broadcaster
     protected $stomp;
 
     /**
-     * The Stomp credentials for connection.
-     *
      * @var array
      */
-    protected $credentials;
+    private $config;
 
     /**
      * Create a Stomp Broadcaster.
      *
-     * @param Stomp $stomp
-     * @param array $credentials [username=string, password=string]
+     * @param array $config
      */
-    public function __construct(Stomp $stomp, array $credentials = [])
+    public function __construct(array $config)
     {
-        $this->stomp = $stomp;
-        $this->credentials = $credentials;
+        $this->config = $config;
+        $this->makeConnection();
+    }
+
+    protected function makeConnection()
+    {
+        $config = $this->config;
+        $stompClient = new Client($config['broker_url']);
+        $username = Arr::get($config, 'username', null);
+        $password = Arr::get($config, 'password', null);
+        $stompClient->setLogin($username, $password);
+
+        $stompClient->setHeartbeat(0, 1000);
+        $observer = new ServerAliveObserver();
+        $stompClient->getConnection()->getObservers()->addObserver($observer);
+
+        $this->stomp = new Stomp($stompClient);
+        return $stompClient;
     }
 
     /**
@@ -48,11 +66,28 @@ class StompBroadcaster implements Broadcaster
 
         $payload = json_encode($payload);
 
-        foreach ($channels as $channel) {
-            $this->stomp->send($channel, new Message($payload, ['persistent' => "true"]));
-        }
 
+        foreach ($channels as $channel) {
+            try {
+                $this->stomp->send($channel, new Message($payload, ['persistent' => "true"]));
+            } catch (HeartbeatException $e) {
+                Log::error("Heartbeat exception: " . $e->getMessage());
+                $this->reconnect();
+                $this->stomp->send($channel, new Message($payload, ['persistent' => "true"]));
+            }
+        }
+    }
+
+    protected function reconnect()
+    {
         $this->disconnect();
+        $this->makeConnection();
+        $this->connect();
+    }
+
+    protected function disconnect()
+    {
+        $this->stomp->getClient()->disconnect();
     }
 
     /**
@@ -61,11 +96,6 @@ class StompBroadcaster implements Broadcaster
     protected function connect()
     {
         $this->stomp->getClient()->connect();
-    }
-
-    protected function disconnect()
-    {
-        $this->stomp->getClient()->disconnect();
     }
 
     public function auth($request)

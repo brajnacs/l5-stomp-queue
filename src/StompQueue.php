@@ -4,10 +4,14 @@ namespace Mayconbordin\L5StompQueue;
 
 use Illuminate\Contracts\Queue\Queue as QueueContract;
 use Illuminate\Queue\Queue;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 use Mayconbordin\L5StompQueue\Jobs\StompJob;
+use Stomp\Client;
 use Stomp\Exception\ConnectionException;
 use Stomp\Network\Observer\Exception\HeartbeatException;
+use Stomp\Network\Observer\ServerAliveObserver;
+use Stomp\StatefulStomp;
 use Stomp\StatefulStomp as Stomp;
 use Stomp\Transport\Frame;
 use Stomp\Transport\Message;
@@ -45,13 +49,27 @@ class StompQueue extends Queue implements QueueContract
     protected $credentials;
     private $stompConfig;
 
-    public function __construct(Stomp $stomp, $default, array $stompConfig, $system = null, array $credentials = [])
+    protected $brokerUrl;
+
+    public function __construct(Stomp $stomp, $default, array $stompConfig, $system = null, string $brokerUrl, array $credentials = [])
     {
         $this->stomp = $stomp;
         $this->default = $default;
         $this->stompConfig = $stompConfig;
         $this->system = $system;
+        $this->brokerUrl = $brokerUrl;
         $this->credentials = $credentials;
+    }
+
+    protected function makeConnection()
+    {
+        $stompClient = new Client($this->brokerUrl);
+        $stompClient->setLogin($this->credentials['username'], $this->credentials['password']);
+        $stompClient->setHeartbeat(0, 1000);
+        $observer = new ServerAliveObserver();
+        $stompClient->getConnection()->getObservers()->addObserver($observer);
+        $stomp = new StatefulStomp($stompClient);
+        $this->stomp = $stomp;
     }
 
     /**
@@ -78,7 +96,14 @@ class StompQueue extends Queue implements QueueContract
     public function pushRaw($payload, $queue = null, array $options = [])
     {
         $message = new Message($payload);
-        return $this->getStomp()->send($this->getQueue($queue), $message);
+        try {
+            return $this->getStomp()->send($this->getQueue($queue), $message);
+        } catch (ConnectionException|HeartbeatException $exception) {
+            Log::error("Error pushing job: " . $exception->getMessage());
+            $this->getStomp()->getClient()->disconnect();
+            $this->makeConnection();
+            return $this->getStomp()->send($this->getQueue($queue), $message);
+        }
     }
 
     /**

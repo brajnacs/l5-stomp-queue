@@ -43,7 +43,8 @@ class StompConnector implements ConnectorInterface
             $config['queue'],
             $config['stomp-config'],
             Arr::get($config, 'system', null),
-            compact('username', 'password'),
+            $config['broker_url'],
+            compact('username', 'password')
         );
     }
 }
