@@ -130,22 +130,8 @@ class StompJob extends Job implements JobContract
      */
     public function release($delay = 0)
     {
+        $this->stomp->getStomp()->nack($this->job);
         parent::release($delay);
-        $this->recreateJob($delay);
-    }
-
-    /**
-     * Release a pushed job back onto the queue.
-     *
-     * @param  int  $delay
-     * @return void
-     */
-    protected function recreateJob($delay)
-    {
-        $payload = json_decode($this->job->body, true);
-        Arr::set($payload, 'attempts', Arr::get($payload, 'attempts', 1) + 1);
-
-        $this->stomp->recreate(json_encode($payload), $this->getQueue(), $delay);
     }
 
     /**
