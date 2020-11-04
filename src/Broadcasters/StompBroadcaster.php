@@ -6,6 +6,7 @@ use Illuminate\Contracts\Broadcasting\Broadcaster;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 use Stomp\Client;
+use Stomp\Exception\ConnectionException;
 use Stomp\Network\Observer\Exception\HeartbeatException;
 use Stomp\Network\Observer\ServerAliveObserver;
 use Stomp\StatefulStomp as Stomp;
@@ -47,7 +48,6 @@ class StompBroadcaster implements Broadcaster
         $stompClient->setHeartbeat(0, 1000);
         $observer = new ServerAliveObserver();
         $stompClient->getConnection()->getObservers()->addObserver($observer);
-
         $this->stomp = new Stomp($stompClient);
         return $stompClient;
     }
@@ -73,6 +73,9 @@ class StompBroadcaster implements Broadcaster
             } catch (HeartbeatException $e) {
                 Log::error("Heartbeat exception: " . $e->getMessage());
                 $this->reconnect();
+                $this->stomp->send($channel, new Message($payload, ['persistent' => "true"]));
+            } catch (ConnectionException $e) {
+                Log::error("Connection exception, trying again: " . $e->getMessage());
                 $this->stomp->send($channel, new Message($payload, ['persistent' => "true"]));
             }
         }
