@@ -95,7 +95,7 @@ class StompQueue extends Queue implements QueueContract
      */
     public function pushRaw($payload, $queue = null, array $options = [])
     {
-        $message = new Message($payload);
+        $message = new Message($payload, $options);
         try {
             return $this->getStomp()->send($this->getQueue($queue), $message);
         } catch (ConnectionException|HeartbeatException $exception) {
@@ -116,7 +116,8 @@ class StompQueue extends Queue implements QueueContract
      */
     public function later($delay, $job, $data = '', $queue = null)
     {
-        throw new \Exception("Not implemented");
+        $payload = $this->createPayload($job, $data, $queue);
+        return $this->pushRaw($payload, $queue, $this->makeDelayHeader($delay));
     }
 
     /**
@@ -130,6 +131,8 @@ class StompQueue extends Queue implements QueueContract
         $allQueues = array_keys($this->stompConfig['queues'] ?? []);
 
         $allQueues[] = $this->getQueue();
+
+        try {
         foreach ($allQueues as $queueItem) {
             if (!$this->isAlreadySubscribed($queueItem)) {
                 $this->getStomp()->subscribe($this->getQueue($queueItem), null, "client");
@@ -137,9 +140,7 @@ class StompQueue extends Queue implements QueueContract
         }
 
         $job = null;
-
-        try {
-            $job = $this->getStomp()->read();
+        $job = $this->getStomp()->read();
         } catch (ConnectionException $connectionException) {
             Log::info("Connection broken: " . $connectionException->getMessage());
             Log::info("exiting");
@@ -147,6 +148,10 @@ class StompQueue extends Queue implements QueueContract
 
         } catch (HeartbeatException $heartbeatException) {
             Log::info("Heartbeat exception: " . $heartbeatException->getMessage());
+            Log::info("exiting");
+            exit(1);
+        } catch (\Exception $exception) {
+            Log::info("Unknown error: " . $exception->getMessage());
             Log::info("exiting");
             exit(1);
         }
@@ -215,8 +220,7 @@ class StompQueue extends Queue implements QueueContract
      */
     protected function makeDelayHeader($delay)
     {
-        $delay = $this->getSeconds($delay);
-
+        $delay = $this->secondsUntil($delay);
         if ($this->system == self::SYSTEM_ACTIVEMQ) {
             return ['AMQ_SCHEDULED_DELAY' => $delay * 1000];
         } else {

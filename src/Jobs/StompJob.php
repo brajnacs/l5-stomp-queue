@@ -151,7 +151,12 @@ class StompJob extends Job implements JobContract
      */
     public function getName()
     {
-        return Arr::get(json_decode($this->job->body, true), 'job');
+        if ($this->isLaravelJob($this->payload())) {
+            return Arr::get(json_decode($this->job->body, true), 'job');
+        }
+
+        $destination = $this->job->getHeaders()['destination'];
+        return $this->resolveJob($this->stompConfig, $destination);
     }
 
     /**
