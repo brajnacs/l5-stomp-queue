@@ -42,7 +42,7 @@ class StompBroadcaster implements Broadcaster
     {
         $config = $this->config;
         $stompClient = new Client($config['broker_url']);
-        $receiptWaitSeconds = $config['receipt_wait_seconds'] ?? 2;
+        $receiptWaitSeconds = $config['receipt_wait_seconds'] ?? 5;
         $stompClient->setReceiptWait($receiptWaitSeconds);
         $username = Arr::get($config, 'username', null);
         $password = Arr::get($config, 'password', null);
