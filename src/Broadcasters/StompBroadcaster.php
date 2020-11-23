@@ -7,6 +7,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 use Stomp\Client;
 use Stomp\Exception\ConnectionException;
+use Stomp\Exception\MissingReceiptException;
 use Stomp\Network\Observer\Exception\HeartbeatException;
 use Stomp\Network\Observer\ServerAliveObserver;
 use Stomp\StatefulStomp as Stomp;
@@ -41,6 +42,8 @@ class StompBroadcaster implements Broadcaster
     {
         $config = $this->config;
         $stompClient = new Client($config['broker_url']);
+        $receiptWaitSeconds = $config['receipt_wait_seconds'] ?? 2;
+        $stompClient->setReceiptWait($receiptWaitSeconds);
         $username = Arr::get($config, 'username', null);
         $password = Arr::get($config, 'password', null);
         $stompClient->setLogin($username, $password);
@@ -76,6 +79,11 @@ class StompBroadcaster implements Broadcaster
                 $this->stomp->send($channel, new Message($payload, ['persistent' => "true"]));
             } catch (ConnectionException $e) {
                 Log::error("Connection exception, trying again: " . $e->getMessage());
+                $this->reconnect();
+                $this->stomp->send($channel, new Message($payload, ['persistent' => "true"]));
+            } catch (MissingReceiptException $e) {
+                Log::error("Receipt exception, trying again: " . $e->getMessage());
+                $this->reconnect();
                 $this->stomp->send($channel, new Message($payload, ['persistent' => "true"]));
             }
         }
