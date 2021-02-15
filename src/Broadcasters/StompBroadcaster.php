@@ -46,9 +46,10 @@ class StompBroadcaster implements Broadcaster
         $stompClient->setReceiptWait($receiptWaitSeconds);
         $username = Arr::get($config, 'username', null);
         $password = Arr::get($config, 'password', null);
+        $heartBeatInterval = Arr::get($config, 'heartbeat_interval_ms', 1000);
         $stompClient->setLogin($username, $password);
 
-        $stompClient->setHeartbeat(0, 1000);
+        $stompClient->setHeartbeat(0, $heartBeatInterval);
         $observer = new ServerAliveObserver();
         $stompClient->getConnection()->getObservers()->addObserver($observer);
         $this->stomp = new Stomp($stompClient);
