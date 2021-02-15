@@ -28,8 +28,9 @@ class StompConnector implements ConnectorInterface
         $stompClient = new Client($config['broker_url']);
         $username = Arr::get($config, 'username', null);
         $password = Arr::get($config, 'password', null);
+        $heartbeatInterval = Arr::get($config, 'heartbeat_interval_ms', 1000);
         $stompClient->setLogin($username, $password);
-        $stompClient->setHeartbeat(0, 1000);
+        $stompClient->setHeartbeat(0, $heartbeatInterval);
         $observer = new ServerAliveObserver();
         $stompClient->getConnection()->getObservers()->addObserver($observer);
         $stomp = new StatefulStomp($stompClient);
@@ -44,7 +45,8 @@ class StompConnector implements ConnectorInterface
             $config['stomp-config'],
             Arr::get($config, 'system', null),
             $config['broker_url'],
-            compact('username', 'password')
+            $heartbeatInterval,
+            compact('username', 'password'),
         );
     }
 }

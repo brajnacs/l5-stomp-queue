@@ -4,7 +4,6 @@ namespace Mayconbordin\L5StompQueue;
 
 use Illuminate\Contracts\Queue\Queue as QueueContract;
 use Illuminate\Queue\Queue;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 use Mayconbordin\L5StompQueue\Jobs\StompJob;
 use Stomp\Client;
@@ -50,8 +49,9 @@ class StompQueue extends Queue implements QueueContract
     private $stompConfig;
 
     protected $brokerUrl;
+    protected $heartbeatInterval;
 
-    public function __construct(Stomp $stomp, $default, array $stompConfig, $system = null, string $brokerUrl, array $credentials = [])
+    public function __construct(Stomp $stomp, $default, array $stompConfig, $system, string $brokerUrl, int $heartbeatInterval, array $credentials = [])
     {
         $this->stomp = $stomp;
         $this->default = $default;
@@ -59,13 +59,14 @@ class StompQueue extends Queue implements QueueContract
         $this->system = $system;
         $this->brokerUrl = $brokerUrl;
         $this->credentials = $credentials;
+        $this->heartbeatInterval = $heartbeatInterval;
     }
 
     protected function makeConnection()
     {
         $stompClient = new Client($this->brokerUrl);
         $stompClient->setLogin($this->credentials['username'], $this->credentials['password']);
-        $stompClient->setHeartbeat(0, 1000);
+        $stompClient->setHeartbeat(0, $this->heartbeatInterval);
         $observer = new ServerAliveObserver();
         $stompClient->getConnection()->getObservers()->addObserver($observer);
         $stomp = new StatefulStomp($stompClient);
@@ -98,7 +99,7 @@ class StompQueue extends Queue implements QueueContract
         $message = new Message($payload, $options);
         try {
             return $this->getStomp()->send($this->getQueue($queue), $message);
-        } catch (ConnectionException|HeartbeatException $exception) {
+        } catch (ConnectionException | HeartbeatException $exception) {
             Log::error("Error pushing job: " . $exception->getMessage());
             $this->getStomp()->getClient()->disconnect();
             $this->makeConnection();
@@ -133,14 +134,14 @@ class StompQueue extends Queue implements QueueContract
         $allQueues[] = $this->getQueue();
 
         try {
-        foreach ($allQueues as $queueItem) {
-            if (!$this->isAlreadySubscribed($queueItem)) {
-                $this->getStomp()->subscribe($this->getQueue($queueItem), null, "client");
+            foreach ($allQueues as $queueItem) {
+                if (!$this->isAlreadySubscribed($queueItem)) {
+                    $this->getStomp()->subscribe($this->getQueue($queueItem), null, "client");
+                }
             }
-        }
 
-        $job = null;
-        $job = $this->getStomp()->read();
+            $job = null;
+            $job = $this->getStomp()->read();
         } catch (ConnectionException $connectionException) {
             Log::info("Connection broken: " . $connectionException->getMessage());
             Log::info("exiting");
