@@ -61,31 +61,35 @@ class StompBroadcaster implements Broadcaster
      *
      * @param array $channels
      * @param string $event
-     * @param array $payload
+     * @param array|Message $payload
      * @return void
      */
-    public function broadcast(array $channels, $event, array $payload = [])
+    public function broadcast(array $channels, $event, $payload = [])
     {
         $this->connect();
 
-        $payload = json_encode($payload);
+        if (is_array($payload)) {
+            $message = new Message(json_encode($payload, ['persistent' => 'true']));
+        } else {
+            $message = $payload;
+        }
 
 
         foreach ($channels as $channel) {
             try {
-                $this->stomp->send($channel, new Message($payload, ['persistent' => "true"]));
+                $this->stomp->send($channel, $message);
             } catch (HeartbeatException $e) {
                 Log::error("Heartbeat exception: " . $e->getMessage());
                 $this->reconnect();
-                $this->stomp->send($channel, new Message($payload, ['persistent' => "true"]));
+                $this->stomp->send($channel, $message);
             } catch (ConnectionException $e) {
                 Log::error("Connection exception, trying again: " . $e->getMessage());
                 $this->reconnect();
-                $this->stomp->send($channel, new Message($payload, ['persistent' => "true"]));
+                $this->stomp->send($channel, $message);
             } catch (MissingReceiptException $e) {
                 Log::error("Receipt exception, trying again: " . $e->getMessage());
                 $this->reconnect();
-                $this->stomp->send($channel, new Message($payload, ['persistent' => "true"]));
+                $this->stomp->send($channel, $message);
             }
         }
     }

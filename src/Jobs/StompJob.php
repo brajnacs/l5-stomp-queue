@@ -7,7 +7,6 @@ use Illuminate\Contracts\Queue\Job as JobContract;
 use Illuminate\Queue\Jobs\Job;
 use Illuminate\Queue\Jobs\JobName;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\Log;
 use Mayconbordin\L5StompQueue\StompQueue;
 use Stomp\Transport\Frame;
 
@@ -70,8 +69,7 @@ class StompJob extends Job implements JobContract
         if ($this->isLaravelJob($payload)) {
             [$class, $method] = JobName::parse($payload['job']);
             ($this->instance = $this->resolve($class))->{$method}($this, $payload['data']);
-        }
-        else {
+        } else {
             $destination = $this->job->getHeaders()['destination'];
             $jobClass = $this->resolveJob($this->stompConfig, $destination);
             $body = json_decode($this->getRawBody(), true);
@@ -84,7 +82,7 @@ class StompJob extends Job implements JobContract
             $jobInstance->handle();
         }
 
-        $this->stomp->getStomp()->ack($this->job);
+        $this->ack();
     }
 
     public function isLaravelJob($payload)
@@ -125,7 +123,7 @@ class StompJob extends Job implements JobContract
     /**
      * Release the job back into the queue.
      *
-     * @param  int $delay
+     * @param int $delay
      * @return void
      */
     public function release($delay = 0)
@@ -187,7 +185,7 @@ class StompJob extends Job implements JobContract
     /**
      * Process an exception that caused the job to fail.
      *
-     * @param  \Throwable|null  $e
+     * @param \Throwable|null $e
      * @return void
      */
     protected function failed($e)
@@ -201,5 +199,10 @@ class StompJob extends Job implements JobContract
         if (method_exists($this->instance = $jobClass, 'failed')) {
             $this->instance->failed($payload, $e);
         }
+    }
+
+    public function ack()
+    {
+        $this->stomp->getStomp()->ack($this->job);
     }
 }
