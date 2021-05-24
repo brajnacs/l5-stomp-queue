@@ -129,9 +129,12 @@ class StompQueue extends Queue implements QueueContract
      */
     public function pop($queue = null)
     {
-        $allQueues = array_keys($this->stompConfig['queues'] ?? []);
-
-        $allQueues[] = $this->getQueue();
+        if (is_null($queue)) {
+            $allQueues = array_keys($this->stompConfig['queues'] ?? []);
+            $allQueues[] = $this->getQueue();
+        } else {
+            $allQueues = [$queue];
+        }
 
         try {
             foreach ($allQueues as $queueItem) {
