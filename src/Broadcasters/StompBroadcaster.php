@@ -69,7 +69,7 @@ class StompBroadcaster implements Broadcaster
         $this->connect();
 
         if (is_array($payload)) {
-            $message = new Message(json_encode($payload, ['persistent' => 'true']));
+            $message = new Message(json_encode($payload), ['persistent' => 'true']);
         } else {
             $message = $payload;
         }
