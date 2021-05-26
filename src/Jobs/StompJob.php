@@ -72,7 +72,7 @@ class StompJob extends Job implements JobContract
         } else {
             $destination = $this->job->getHeaders()['destination'];
             $jobClass = $this->resolveJob($this->stompConfig, $destination);
-            $body = json_decode($this->getRawBody(), true);
+            $body = json_decode($this->getRawBody(), true) ?? $this->getRawBody();
 
             $jobInstance = new $jobClass(
                 $destination,
