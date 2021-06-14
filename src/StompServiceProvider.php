@@ -1,12 +1,7 @@
 <?php
-
 namespace Mayconbordin\L5StompQueue;
 
-use Stomp\Client;
-use Stomp\Network\Observer\ServerAliveObserver;
-use Stomp\StatefulStomp;
-use Stomp\StatefulStomp as Stomp;
-use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
 use Mayconbordin\L5StompQueue\Broadcasters\StompBroadcaster;
 use Mayconbordin\L5StompQueue\Connectors\StompConnector;
@@ -32,8 +27,13 @@ class StompServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        $this->registerStompConnector($this->app['queue']);
+        Log::info("Registering stomp broadcaster");
         $this->registerStompBroadcaster($this->app->make('Illuminate\Broadcasting\BroadcastManager'));
+
+        if ($this->app->runningInConsole()) {
+            Log::info("Registering stomp connector");
+            $this->registerStompConnector($this->app['queue']);
+        }
     }
 
     /**
@@ -55,7 +55,7 @@ class StompServiceProvider extends ServiceProvider
      */
     protected function registerStompConnector($manager)
     {
-        $manager->addConnector('stomp', function() {
+        $manager->addConnector('stomp', function () {
             return new StompConnector();
         });
     }
