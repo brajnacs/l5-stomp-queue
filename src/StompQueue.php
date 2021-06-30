@@ -129,6 +129,13 @@ class StompQueue extends Queue implements QueueContract
      */
     public function pop($queue = null)
     {
+        $job = null;
+        if (! $this->getStomp()->getClient()->isConnected()) {
+            Log::error("Not connected");
+            Log::info("Connecting");
+            $this->makeConnection();
+        }
+
         if (is_null($queue) || $queue == $this->getQueue()) {
             $allQueues = array_keys($this->stompConfig['queues'] ?? []);
             $allQueues[] = $this->getQueue();
@@ -143,21 +150,20 @@ class StompQueue extends Queue implements QueueContract
                 }
             }
 
-            $job = null;
             $job = $this->getStomp()->read();
         } catch (ConnectionException $connectionException) {
-            Log::info("Connection broken: " . $connectionException->getMessage());
-            Log::info("exiting");
-            exit(1);
+            Log::error("Connection broken: " . $connectionException->getMessage());
+            Log::info("Disconnecting");
+            $this->getStomp()->getClient()->disconnect();
 
         } catch (HeartbeatException $heartbeatException) {
-            Log::info("Heartbeat exception: " . $heartbeatException->getMessage());
-            Log::info("exiting");
-            exit(1);
+            Log::error("Heartbeat exception: " . $heartbeatException->getMessage());
+            Log::info("Disconnecting");
+            $this->getStomp()->getClient()->disconnect();
         } catch (\Exception $exception) {
-            Log::info("Unknown error: " . $exception->getMessage());
-            Log::info("exiting");
-            exit(1);
+            Log::error("Unknown error: " . $exception->getMessage());
+            Log::info("Disconnecting");
+            $this->getStomp()->getClient()->disconnect();
         }
 
         if (!is_null($job) && ($job instanceof Frame)) {
