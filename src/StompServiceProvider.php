@@ -26,9 +26,14 @@ class StompServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        $this->registerStompBroadcaster($this->app->make('Illuminate\Broadcasting\BroadcastManager'));
+        $disableBroadcaster = config('queue.connections.stomp.stomp-config.disable-broadcaster', false);
+        $disableConnector = config('queue.connections.stomp.stomp-config.disable-connector', false);
 
-        if ($this->app->runningInConsole()) {
+        if (!$disableBroadcaster) {
+            $this->registerStompBroadcaster($this->app->make('Illuminate\Broadcasting\BroadcastManager'));
+        }
+
+        if (!$disableConnector) {
             $this->registerStompConnector($this->app['queue']);
         }
     }
